@@ -1,0 +1,39 @@
+# Version control
+.git
+.gitignore
+
+# Build artifacts
+_build
+deps
+.elixir_ls
+
+# Node
+node_modules
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# CI
+.github
+
+# Dev/test files
+.formatter.exs
+.credo.exs
+cover
+doc
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# AI/docs
+.ai
+AGENTS.md
