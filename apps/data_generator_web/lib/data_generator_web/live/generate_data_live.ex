@@ -123,9 +123,8 @@ defmodule DataGeneratorWeb.GenerateDataLive do
                   <div class="flex-1 min-w-0">
                     <label class="block text-xs font-medium text-gray-700 mb-1">Data Type</label>
                     <select
-                      phx-change="update_column_type"
+                      phx-blur="update_column_type"
                       phx-value-id={column.id}
-                      name="type_name"
                       class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500 transition"
                     >
                       <%= for {label, value} <- @type_options do %>
@@ -425,7 +424,7 @@ defmodule DataGeneratorWeb.GenerateDataLive do
     {:noreply, assign(socket, columns: columns)}
   end
 
-  def handle_event("update_column_type", %{"id" => id_str, "type_name" => type_name}, socket) do
+  def handle_event("update_column_type", %{"id" => id_str, "value" => type_name}, socket) do
     id = String.to_integer(id_str)
 
     columns =
