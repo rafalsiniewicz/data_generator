@@ -20,12 +20,6 @@ defmodule DataGeneratorWeb.HomeLive do
         </p>
         <div class="mt-10 flex items-center justify-center gap-x-6">
           <.link
-            navigate={~p"/register"}
-            class="rounded-lg bg-blue-500 px-6 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blue-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 transition"
-          >
-            Get Started for Free
-          </.link>
-          <.link
             navigate={~p"/generate"}
             class="text-sm font-semibold text-gray-900 hover:text-blue-500 transition"
           >
@@ -38,7 +32,7 @@ defmodule DataGeneratorWeb.HomeLive do
             <div class="flex items-center justify-center w-12 h-12 mx-auto rounded-full bg-blue-50">
               <.icon name="hero-table-cells" class="w-6 h-6 text-blue-500" />
             </div>
-            <h3 class="mt-4 text-lg font-semibold text-gray-900">25+ Data Types</h3>
+            <h3 class="mt-4 text-lg font-semibold text-gray-900">20+ Data Types</h3>
             <p class="mt-2 text-sm text-gray-600">
               Names, emails, addresses, numbers, dates, UUIDs, custom enums, and more.
             </p>

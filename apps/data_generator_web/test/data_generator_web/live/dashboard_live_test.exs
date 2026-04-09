@@ -92,13 +92,13 @@ defmodule DataGeneratorWeb.DashboardLiveTest do
       assert has_element?(view, "span", "New Template")
       assert has_element?(view, "span", "New Project")
       assert has_element?(view, "span", "New Enum")
-      assert has_element?(view, "span", "Generate Data")
     end
 
-    test "Quick Generate button is present", %{conn: conn} do
+    test "no Generate Data or Quick Generate on dashboard", %{conn: conn} do
       {:ok, view, _html} = live(conn, ~p"/dashboard")
 
-      assert has_element?(view, "a", "Quick Generate")
+      refute has_element?(view, "span", "Generate Data")
+      refute has_element?(view, "a", "Quick Generate")
     end
   end
 end

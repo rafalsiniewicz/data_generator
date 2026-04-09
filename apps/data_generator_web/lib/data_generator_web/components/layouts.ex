@@ -142,12 +142,6 @@ defmodule DataGeneratorWeb.Layouts do
             </.link>
             <nav class="flex items-center gap-3">
               <.link
-                navigate={~p"/generate"}
-                class="text-sm font-medium text-gray-600 hover:text-gray-900 transition"
-              >
-                Generate Data
-              </.link>
-              <.link
                 navigate={~p"/login"}
                 class="text-sm font-medium text-gray-600 hover:text-gray-900 transition"
               >

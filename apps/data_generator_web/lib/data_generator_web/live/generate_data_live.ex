@@ -3,39 +3,12 @@ defmodule DataGeneratorWeb.GenerateDataLive do
 
   alias DataGenerator.Generator
   alias DataGenerator.Export
+  alias DataGenerator.Templates
+  alias DataGenerator.Enums
+  alias DataGenerator.Projects
 
-  @type_options [
-    {"-- Select Type --", ""},
-    {"Personal", :disabled},
-    {"First Name", "first_name"},
-    {"Last Name", "last_name"},
-    {"Email", "email"},
-    {"Phone", "phone"},
-    {"Address", :disabled},
-    {"City", "city"},
-    {"Country", "country"},
-    {"Street", "street"},
-    {"Zip Code", "zip_code"},
-    {"Internet", :disabled},
-    {"URL", "url"},
-    {"IP Address", "ip_address"},
-    {"Domain", "domain"},
-    {"Commerce", :disabled},
-    {"Price", "price"},
-    {"Product Name", "product_name"},
-    {"Company", "company"},
-    {"Primitives", :disabled},
-    {"Integer", "integer"},
-    {"Float", "float"},
-    {"String", "string"},
-    {"Boolean", "boolean"},
-    {"Date", "date"},
-    {"Datetime", "datetime"},
-    {"UUID", "uuid"},
-    {"Advanced", :disabled},
-    {"Regex Pattern", "regex"},
-    {"Custom Enum", "enum"}
-  ]
+  # type options are now loaded dynamically from the database via Generator.list_types/0
+  @type_options []
 
   @max_rows_unauthenticated 100
   @max_rows_authenticated 1_000_000
@@ -48,6 +21,45 @@ defmodule DataGeneratorWeb.GenerateDataLive do
         do: @max_rows_authenticated,
         else: @max_rows_unauthenticated
 
+    user = socket.assigns.current_user
+    templates = if user, do: Templates.list_user_templates(user.id), else: []
+    types = if user, do: Generator.list_types(), else: Generator.list_types()
+
+    # collect enums: user's enums plus enums owned by members of user's projects
+    enums =
+      if user do
+        user_enums = Enums.list_user_enums(user.id)
+
+        projects = Projects.list_user_projects(user.id)
+
+        project_member_user_ids =
+          projects
+          |> Enum.flat_map(fn p -> Enum.map(p.project_members || [], & &1.user_id) end)
+          |> Enum.uniq()
+
+        other_user_ids = Enum.reject(project_member_user_ids, &(&1 == user.id))
+
+        project_enums =
+          other_user_ids
+          |> Enum.flat_map(&Enums.list_user_enums/1)
+
+        (user_enums ++ project_enums)
+        |> Enum.uniq_by(& &1.id)
+      else
+        []
+      end
+
+    # templates: personal + grouped project templates for projects user is a member of
+    user_templates = if user, do: Templates.list_user_templates(user.id), else: []
+
+    project_template_groups =
+      if user do
+        Projects.list_user_projects(user.id)
+        |> Enum.map(fn proj -> {proj, Projects.list_project_templates(proj.id)} end)
+      else
+        []
+      end
+
     {:ok,
      assign(socket,
        page_title: "Generate Data",
@@ -58,7 +70,14 @@ defmodule DataGeneratorWeb.GenerateDataLive do
        generated_data: nil,
        generating: false,
        preview_columns: [],
-       type_options: @type_options
+       type_options: @type_options,
+       templates: templates,
+       types: types,
+       enums: enums,
+       user_templates: user_templates,
+       project_template_groups: project_template_groups,
+       mode: "ad_hoc",
+       selected_template_id: nil
      )}
   end
 
@@ -80,12 +99,6 @@ defmodule DataGeneratorWeb.GenerateDataLive do
           <h1 class="text-2xl font-bold text-gray-900">Generate Data</h1>
           <p class="mt-1 text-sm text-gray-600">
             Define your columns, choose data types, and generate realistic mock data instantly.
-            <%= if !@current_user do %>
-              <.link navigate={~p"/register"} class="text-blue-500 hover:text-blue-600 font-semibold">
-                Sign up
-              </.link>
-              to generate up to 1M rows and export data.
-            <% end %>
           </p>
         </div>
 
@@ -93,13 +106,59 @@ defmodule DataGeneratorWeb.GenerateDataLive do
         <div class="rounded-xl border border-gray-200 bg-white shadow-sm">
           <div class="flex items-center justify-between border-b border-gray-200 px-6 py-4">
             <h2 class="text-lg font-semibold text-gray-900">Column Definitions</h2>
-            <button
-              phx-click="add_column"
-              type="button"
-              class="inline-flex items-center gap-1.5 rounded-lg bg-blue-50 px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-100 transition"
-            >
-              <.icon name="hero-plus" class="w-4 h-4" /> Add Column
-            </button>
+            <div class="flex items-center gap-3">
+              <%= if @current_user do %>
+                <div class="text-sm text-gray-600">Mode:</div>
+                <form phx-change="change_mode">
+                  <select
+                    name="value"
+                    phx-debounce="0"
+                    id="generate-mode"
+                    class="rounded-lg border border-gray-300 px-2 py-1 text-sm"
+                  >
+                    <option value="ad_hoc" selected={@mode == "ad_hoc"}>Ad hoc</option>
+                    <option value="template" selected={@mode == "template"}>From template</option>
+                  </select>
+                </form>
+              <% end %>
+
+              <%= if @mode == "template" do %>
+                <form phx-change="select_template">
+                  <select
+                    name="value"
+                    id="template-select"
+                    class="rounded-lg border border-gray-300 px-2 py-1 text-sm"
+                  >
+                    <option value="">-- Select template --</option>
+                    <%!-- user templates first --%>
+                    <%= for t <- @user_templates do %>
+                      <option value={t.id} selected={@selected_template_id == t.id}>{t.name}</option>
+                    <% end %>
+
+                    <%!-- divider --%>
+                    <option disabled class="text-gray-400">-- Projects --</option>
+
+                    <%!-- grouped project templates --%>
+                    <%= for {proj, templates} <- @project_template_groups do %>
+                      <option disabled class="text-gray-400">-- {proj.name} --</option>
+                      <%= for pt <- templates do %>
+                        <option value={pt.id} selected={@selected_template_id == pt.id}>
+                          &nbsp;&nbsp;{pt.name}
+                        </option>
+                      <% end %>
+                    <% end %>
+                  </select>
+                </form>
+              <% end %>
+
+              <button
+                phx-click="add_column"
+                type="button"
+                class="inline-flex items-center gap-1.5 rounded-lg bg-blue-50 px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-100 transition"
+              >
+                <.icon name="hero-plus" class="w-4 h-4" /> Add Column
+              </button>
+            </div>
           </div>
 
           <div class="divide-y divide-gray-100">
@@ -109,37 +168,38 @@ defmodule DataGeneratorWeb.GenerateDataLive do
                   <%!-- Column Name --%>
                   <div class="flex-1 min-w-0">
                     <label class="block text-xs font-medium text-gray-700 mb-1">Column Name</label>
-                    <input
-                      type="text"
-                      value={column.name}
-                      phx-blur="update_column_name"
-                      phx-value-id={column.id}
-                      class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500 transition"
-                      placeholder="column_name"
-                    />
+                    <form phx-change="update_column_name" phx-value-id={column.id}>
+                      <input
+                        type="text"
+                        name="column_name"
+                        value={column.name}
+                        class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500 transition"
+                        placeholder="column_name"
+                      />
+                    </form>
                   </div>
 
                   <%!-- Type Selector --%>
                   <div class="flex-1 min-w-0">
                     <label class="block text-xs font-medium text-gray-700 mb-1">Data Type</label>
-                    <select
-                      phx-blur="update_column_type"
-                      phx-value-id={column.id}
-                      class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500 transition"
-                    >
-                      <%= for {label, value} <- @type_options do %>
-                        <%= if value == :disabled do %>
-                          <option disabled class="font-semibold text-gray-400">{label}</option>
-                        <% else %>
-                          <option value={value} selected={column.type_name == value}>{label}</option>
+                    <form phx-change="update_column_type" phx-value-id={column.id}>
+                      <select
+                        name="type_name"
+                        class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500 transition"
+                      >
+                        <option value="">-- Select Type --</option>
+                        <%= for type <- @types do %>
+                          <option value={type.name} selected={column.type_name == type.name}>
+                            {type.name}
+                          </option>
                         <% end %>
-                      <% end %>
-                    </select>
+                      </select>
+                    </form>
                   </div>
 
                   <%!-- Config (type-specific) --%>
                   <div class="flex-1 min-w-0">
-                    <.type_config column={column} />
+                    <.type_config column={column} enums={@enums} />
                   </div>
 
                   <%!-- Remove Button --%>
@@ -168,14 +228,17 @@ defmodule DataGeneratorWeb.GenerateDataLive do
           <div class="flex flex-wrap items-end gap-6">
             <div class="flex-1 min-w-48">
               <label class="block text-sm font-medium text-gray-700 mb-1">Number of Rows</label>
-              <input
-                type="number"
-                value={@row_count}
-                phx-blur="update_row_count"
-                min="1"
-                max={@max_rows}
-                class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500 transition"
-              />
+              <form phx-change="update_row_count">
+                <input
+                  type="number"
+                  name="row_count"
+                  value={@row_count}
+                  min="1"
+                  max={@max_rows}
+                  class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500 transition"
+                />
+              </form>
+
               <p class="mt-1 text-xs text-gray-500">Max: {Integer.to_string(@max_rows)} rows</p>
             </div>
             <div>
@@ -288,116 +351,7 @@ defmodule DataGeneratorWeb.GenerateDataLive do
     """
   end
 
-  # Type-specific config inputs
-  defp type_config(%{column: %{type_name: "integer"}} = assigns) do
-    ~H"""
-    <label class="block text-xs font-medium text-gray-700 mb-1">Range</label>
-    <div class="flex items-center gap-2">
-      <input
-        type="number"
-        value={@column.config["min"] || 0}
-        phx-blur="update_column_config"
-        phx-value-id={@column.id}
-        phx-value-key="min"
-        class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500"
-        placeholder="Min"
-      />
-      <span class="text-gray-400">-</span>
-      <input
-        type="number"
-        value={@column.config["max"] || 1000}
-        phx-blur="update_column_config"
-        phx-value-id={@column.id}
-        phx-value-key="max"
-        class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500"
-        placeholder="Max"
-      />
-    </div>
-    """
-  end
-
-  defp type_config(%{column: %{type_name: "float"}} = assigns) do
-    ~H"""
-    <label class="block text-xs font-medium text-gray-700 mb-1">Range & Precision</label>
-    <div class="flex items-center gap-2">
-      <input
-        type="number"
-        value={@column.config["min"] || 0}
-        phx-blur="update_column_config"
-        phx-value-id={@column.id}
-        phx-value-key="min"
-        step="any"
-        class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500"
-        placeholder="Min"
-      />
-      <span class="text-gray-400">-</span>
-      <input
-        type="number"
-        value={@column.config["max"] || 100}
-        phx-blur="update_column_config"
-        phx-value-id={@column.id}
-        phx-value-key="max"
-        step="any"
-        class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500"
-        placeholder="Max"
-      />
-    </div>
-    """
-  end
-
-  defp type_config(%{column: %{type_name: "string"}} = assigns) do
-    ~H"""
-    <label class="block text-xs font-medium text-gray-700 mb-1">Length</label>
-    <input
-      type="number"
-      value={@column.config["length"] || 10}
-      phx-blur="update_column_config"
-      phx-value-id={@column.id}
-      phx-value-key="length"
-      min="1"
-      max="1000"
-      class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500"
-      placeholder="Length"
-    />
-    """
-  end
-
-  defp type_config(%{column: %{type_name: "regex"}} = assigns) do
-    ~H"""
-    <label class="block text-xs font-medium text-gray-700 mb-1">Pattern</label>
-    <input
-      type="text"
-      value={@column.config["pattern"] || ""}
-      phx-blur="update_column_config"
-      phx-value-id={@column.id}
-      phx-value-key="pattern"
-      class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono shadow-sm focus:border-blue-500 focus:ring-blue-500"
-      placeholder="[A-Z]{3}-\\d{4}"
-    />
-    """
-  end
-
-  defp type_config(%{column: %{type_name: "enum"}} = assigns) do
-    ~H"""
-    <label class="block text-xs font-medium text-gray-700 mb-1">Values (comma-separated)</label>
-    <input
-      type="text"
-      value={@column.config["values"] || ""}
-      phx-blur="update_column_config"
-      phx-value-id={@column.id}
-      phx-value-key="values"
-      class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500"
-      placeholder="red, green, blue"
-    />
-    """
-  end
-
-  defp type_config(assigns) do
-    ~H"""
-    <label class="block text-xs font-medium text-gray-700 mb-1">Config</label>
-    <p class="text-xs text-gray-400 py-2">No additional configuration needed.</p>
-    """
-  end
+  # type-specific config is rendered via the shared <.type_config /> component
 
   # Event handlers
 
@@ -413,7 +367,7 @@ defmodule DataGeneratorWeb.GenerateDataLive do
     {:noreply, assign(socket, columns: columns)}
   end
 
-  def handle_event("update_column_name", %{"id" => id_str, "value" => name}, socket) do
+  def handle_event("update_column_name", %{"id" => id_str, "column_name" => name}, socket) do
     id = String.to_integer(id_str)
 
     columns =
@@ -424,7 +378,7 @@ defmodule DataGeneratorWeb.GenerateDataLive do
     {:noreply, assign(socket, columns: columns)}
   end
 
-  def handle_event("update_column_type", %{"id" => id_str, "value" => type_name}, socket) do
+  def handle_event("update_column_type", %{"id" => id_str, "type_name" => type_name}, socket) do
     id = String.to_integer(id_str)
 
     columns =
@@ -437,6 +391,44 @@ defmodule DataGeneratorWeb.GenerateDataLive do
     {:noreply, assign(socket, columns: columns)}
   end
 
+  def handle_event("change_mode", %{"value" => mode}, socket) do
+    {:noreply, assign(socket, mode: mode)}
+  end
+
+  def handle_event("select_template", %{"value" => ""}, socket) do
+    {:noreply, assign(socket, selected_template_id: nil)}
+  end
+
+  def handle_event("select_template", %{"value" => id_str}, socket) do
+    id = String.to_integer(id_str)
+
+    # load template with columns
+    template = Templates.get_template_with_columns!(id)
+
+    # convert template columns to local column format
+    columns =
+      Enum.map(template.columns, fn c ->
+        %{
+          id: c.id,
+          name: c.name,
+          type_name: (c.type && c.type.name) || "",
+          config: c.config || %{}
+        }
+      end)
+
+    ids = Enum.map(columns, & &1.id)
+    max_id = if ids == [], do: 0, else: Enum.max(ids)
+    next_id = max_id + 1
+
+    {:noreply,
+     assign(socket,
+       columns: columns,
+       next_id: next_id,
+       row_count: template.number_of_rows || socket.assigns.row_count,
+       selected_template_id: id
+     )}
+  end
+
   def handle_event(
         "update_column_config",
         %{"id" => id_str, "key" => key, "value" => value},
@@ -447,7 +439,7 @@ defmodule DataGeneratorWeb.GenerateDataLive do
     columns =
       Elixir.Enum.map(socket.assigns.columns, fn col ->
         if col.id == id do
-          %{col | config: Map.put(col.config, key, maybe_parse_number(value))}
+          %{col | config: Map.put(col.config || %{}, key, maybe_parse_number(value))}
         else
           col
         end
@@ -456,7 +448,9 @@ defmodule DataGeneratorWeb.GenerateDataLive do
     {:noreply, assign(socket, columns: columns)}
   end
 
-  def handle_event("update_row_count", %{"value" => value}, socket) do
+  def handle_event("update_row_count", params, socket) do
+    value = params["row_count"] || params["value"] || "10"
+
     row_count =
       case Integer.parse(value) do
         {n, _} -> min(max(n, 1), socket.assigns.max_rows)
@@ -545,30 +539,76 @@ defmodule DataGeneratorWeb.GenerateDataLive do
     end
   end
 
-  defp default_config("integer"), do: %{"min" => 0, "max" => 1000}
-  defp default_config("float"), do: %{"min" => 0, "max" => 100}
-  defp default_config("string"), do: %{"length" => 10}
+  defp default_config("integer"), do: %{"min" => 0, "max" => 1000, "step" => 1, "null_prob" => 0}
+
+  defp default_config("float"),
+    do: %{"min" => 0, "max" => 100, "precision" => 2, "null_prob" => 0}
+
+  defp default_config("string"),
+    do: %{
+      "length" => 10,
+      "charset" => "alphanumeric",
+      "prefix" => "",
+      "suffix" => "",
+      "null_prob" => 0
+    }
+
   defp default_config("regex"), do: %{"pattern" => ""}
-  defp default_config("enum"), do: %{"values" => ""}
+  defp default_config("enum"), do: %{"values" => []}
+
+  defp default_config("date"),
+    do: %{"from" => "2020-01-01", "to" => "2025-12-31", "timezone" => "UTC"}
+
+  defp default_config("datetime"),
+    do: %{
+      "from" => "2020-01-01T00:00:00",
+      "to" => "2025-12-31T23:59:59",
+      "timezone" => "UTC"
+    }
+
+  defp default_config("price"), do: %{"currency" => ""}
   defp default_config(_), do: %{}
 
   defp prepare_config("enum", config) do
-    values =
-      case Map.get(config, "values") do
-        v when is_binary(v) ->
-          v
-          |> String.split(",")
-          |> Elixir.Enum.map(&String.trim/1)
-          |> Elixir.Enum.reject(&(&1 == ""))
+    # if enum_id present, fetch enum values from DB, otherwise fall back to inline values
+    case Map.get(config, "enum_id") do
+      id when is_integer(id) and id > 0 ->
+        enum = Enums.get_enum!(id)
+        values = Enum.map(enum.enum_values || [], & &1.value)
+        Map.put(config, "values", values)
 
-        v when is_list(v) ->
-          v
+      id when is_binary(id) ->
+        case Integer.parse(id) do
+          {n, _} ->
+            enum = Enums.get_enum!(n)
+            values = Enum.map(enum.enum_values || [], & &1.value)
+            Map.put(config, "values", values)
 
-        _ ->
-          []
-      end
+          _ ->
+            # fallback to comma-separated string
+            v = Map.get(config, "values") || ""
 
-    Map.put(config, "values", values)
+            values =
+              v |> String.split(",") |> Enum.map(&String.trim/1) |> Enum.reject(&(&1 == ""))
+
+            Map.put(config, "values", values)
+        end
+
+      _ ->
+        values =
+          case Map.get(config, "values") do
+            v when is_binary(v) ->
+              v |> String.split(",") |> Enum.map(&String.trim/1) |> Enum.reject(&(&1 == ""))
+
+            v when is_list(v) ->
+              v
+
+            _ ->
+              []
+          end
+
+        Map.put(config, "values", values)
+    end
   end
 
   defp prepare_config(_type, config), do: config

@@ -3,18 +3,29 @@ defmodule DataGeneratorWeb.TemplatesLive.Edit do
 
   alias DataGenerator.Templates
   alias DataGenerator.Generator
+  alias DataGenerator.Enums
 
   def mount(%{"id" => id}, _session, socket) do
     user = socket.assigns.current_user
     template = Templates.get_user_template!(user.id, id)
     changeset = Templates.change_template(template)
     types = Generator.list_types()
+    enums = Enums.list_user_enums(user.id)
 
     columns =
       template.columns
       |> Elixir.Enum.with_index()
       |> Elixir.Enum.map(fn {col, idx} ->
-        %{id: idx, name: col.name, type_id: col.type_id, config: col.config || %{}, db_id: col.id}
+        type = Elixir.Enum.find(types, fn t -> t.id == col.type_id end)
+
+        %{
+          id: idx,
+          name: col.name,
+          type_id: col.type_id,
+          type_name: (type && type.name) || "",
+          config: col.config || %{},
+          db_id: col.id
+        }
       end)
 
     columns = if columns == [], do: [default_column(0)], else: columns
@@ -26,6 +37,7 @@ defmodule DataGeneratorWeb.TemplatesLive.Edit do
        template: template,
        form: to_form(changeset, as: :template),
        types: types,
+       enums: enums,
        columns: columns,
        next_column_id: next_id
      )}
@@ -77,94 +89,100 @@ defmodule DataGeneratorWeb.TemplatesLive.Edit do
               phx-debounce="blur"
             />
           </div>
+        </.form>
 
-          <div class="rounded-xl border border-gray-200 bg-white shadow-sm">
-            <div class="flex items-center justify-between border-b border-gray-200 px-6 py-4">
-              <h2 class="text-lg font-semibold text-gray-900">Columns</h2>
-              <button
-                type="button"
-                phx-click="add_column"
-                class="inline-flex items-center gap-1.5 rounded-lg bg-blue-50 px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-100 transition"
-              >
-                <.icon name="hero-plus" class="w-4 h-4" /> Add Column
-              </button>
-            </div>
+        <%!-- Columns section outside the form to allow <form> wrappers --%>
+        <div class="rounded-xl border border-gray-200 bg-white shadow-sm">
+          <div class="flex items-center justify-between border-b border-gray-200 px-6 py-4">
+            <h2 class="text-lg font-semibold text-gray-900">Columns</h2>
+            <button
+              type="button"
+              phx-click="add_column"
+              class="inline-flex items-center gap-1.5 rounded-lg bg-blue-50 px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-100 transition"
+            >
+              <.icon name="hero-plus" class="w-4 h-4" /> Add Column
+            </button>
+          </div>
 
-            <div class="divide-y divide-gray-100">
-              <%= for column <- @columns do %>
-                <div class="px-6 py-4" id={"edit-col-#{column.id}"}>
-                  <div class="flex items-start gap-4">
-                    <div class="flex-1">
-                      <label class="block text-xs font-medium text-gray-700 mb-1">Column Name</label>
+          <div class="divide-y divide-gray-100">
+            <%= for column <- @columns do %>
+              <div class="px-6 py-4" id={"edit-col-#{column.id}"}>
+                <div class="flex items-start gap-4">
+                  <div class="flex-1">
+                    <label class="block text-xs font-medium text-gray-700 mb-1">Column Name</label>
+                    <form phx-change="update_column" phx-value-id={column.id} phx-value-field="name">
                       <input
                         type="text"
+                        name="value"
                         value={column.name}
-                        phx-blur="update_column"
-                        phx-value-id={column.id}
-                        phx-value-field="name"
                         class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500"
                         placeholder="column_name"
                       />
-                    </div>
-                    <div class="flex-1">
-                      <label class="block text-xs font-medium text-gray-700 mb-1">Type</label>
+                    </form>
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <label class="block text-xs font-medium text-gray-700 mb-1">Type</label>
+                    <form phx-change="update_column_type_select" phx-value-id={column.id}>
                       <select
-                        phx-change="update_column_type_select"
-                        phx-value-id={column.id}
-                        name={"column_type_#{column.id}"}
-                        class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                        name="value"
+                        class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500 transition"
                       >
                         <option value="">Select type...</option>
                         <%= for type <- @types do %>
-                          <option value={type.id} selected={column.type_id == type.id}>
+                          <option value={type.name} selected={column.type_name == type.name}>
                             {type.name}
                           </option>
                         <% end %>
                       </select>
-                    </div>
-                    <div class="pt-6">
-                      <button
-                        type="button"
-                        phx-click="remove_column"
-                        phx-value-id={column.id}
-                        class={[
-                          "rounded-lg p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 transition",
-                          length(@columns) <= 1 && "opacity-30 pointer-events-none"
-                        ]}
-                        disabled={length(@columns) <= 1}
-                      >
-                        <.icon name="hero-trash" class="w-4 h-4" />
-                      </button>
-                    </div>
+                    </form>
+                  </div>
+
+                  <div class="flex-1 min-w-0">
+                    <.type_config column={column} enums={@enums} />
+                  </div>
+                  <div class="pt-6">
+                    <button
+                      type="button"
+                      phx-click="remove_column"
+                      phx-value-id={column.id}
+                      class={[
+                        "rounded-lg p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 transition",
+                        length(@columns) <= 1 && "opacity-30 pointer-events-none"
+                      ]}
+                      disabled={length(@columns) <= 1}
+                    >
+                      <.icon name="hero-trash" class="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
-              <% end %>
-            </div>
+              </div>
+            <% end %>
           </div>
+        </div>
 
-          <div class="flex items-center justify-end gap-3">
-            <.link
-              navigate={~p"/templates"}
-              class="rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50 transition"
-            >
-              Cancel
-            </.link>
-            <.button
-              type="submit"
-              phx-disable-with="Saving..."
-              class="rounded-lg bg-blue-500 px-6 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-600 transition"
-            >
-              Save Changes
-            </.button>
-          </div>
-        </.form>
+        <div class="flex items-center justify-end gap-3">
+          <.link
+            navigate={~p"/templates"}
+            class="rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50 transition"
+          >
+            Cancel
+          </.link>
+          <button
+            type="submit"
+            form="template-edit-form"
+            phx-disable-with="Saving..."
+            class="rounded-lg bg-blue-500 px-6 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-600 transition"
+          >
+            Save Changes
+          </button>
+        </div>
       </div>
     </Layouts.app>
     """
   end
 
   defp default_column(id) do
-    %{id: id, name: "", type_id: nil, config: %{}, db_id: nil}
+    %{id: id, name: "", type_name: "", type_id: nil, config: %{}, db_id: nil}
   end
 
   def handle_event("validate", %{"template" => template_params}, socket) do
@@ -199,34 +217,43 @@ defmodule DataGeneratorWeb.TemplatesLive.Edit do
     {:noreply, assign(socket, columns: columns)}
   end
 
-  def handle_event("update_column_type_select", params, socket) do
-    # Find which column changed by checking the params
-    {id_str, type_id_str} =
-      params
-      |> Elixir.Enum.find(fn {key, _val} -> String.starts_with?(key, "column_type_") end)
-      |> case do
-        {"column_type_" <> id_str, val} -> {id_str, val}
-        _ -> {nil, nil}
-      end
+  def handle_event(
+        "update_column_config",
+        %{"id" => id_str, "key" => key, "value" => value},
+        socket
+      ) do
+    id = String.to_integer(id_str)
 
-    if id_str do
-      id = String.to_integer(id_str)
-
-      type_id =
-        case Integer.parse(type_id_str) do
-          {n, _} -> n
-          :error -> nil
+    columns =
+      Enum.map(socket.assigns.columns, fn col ->
+        if col.id == id do
+          parsed_value = parse_config_value(key, value)
+          %{col | config: Map.put(col.config || %{}, key, parsed_value)}
+        else
+          col
         end
+      end)
 
-      columns =
-        Elixir.Enum.map(socket.assigns.columns, fn col ->
-          if col.id == id, do: %{col | type_id: type_id}, else: col
-        end)
+    {:noreply, assign(socket, columns: columns)}
+  end
 
-      {:noreply, assign(socket, columns: columns)}
-    else
-      {:noreply, socket}
-    end
+  def handle_event("update_column_type_select", %{"id" => id_str, "value" => type_name}, socket) do
+    id = String.to_integer(id_str)
+
+    type = Enum.find(socket.assigns.types, fn t -> t.name == type_name end)
+    type_id = if type, do: type.id, else: nil
+
+    columns =
+      Enum.map(socket.assigns.columns, fn col ->
+        if col.id == id do
+          default_cfg = if type, do: default_config(type.name), else: %{}
+          %{col | type_id: type_id, type_name: (type && type.name) || "", config: default_cfg}
+        else
+          col
+        end
+      end)
+
+    {:noreply, assign(socket, columns: columns)}
   end
 
   def handle_event("save", %{"template" => template_params}, socket) do
@@ -257,4 +284,56 @@ defmodule DataGeneratorWeb.TemplatesLive.Edit do
         {:noreply, assign(socket, form: to_form(changeset, as: :template))}
     end
   end
+
+  defp parse_config_value("enum_id", value) when is_binary(value) do
+    case Integer.parse(value) do
+      {n, _} -> n
+      :error -> value
+    end
+  end
+
+  defp parse_config_value(_key, value) when is_binary(value) do
+    case Integer.parse(value) do
+      {n, ""} ->
+        n
+
+      _ ->
+        case Float.parse(value) do
+          {f, ""} -> f
+          _ -> value
+        end
+    end
+  end
+
+  defp parse_config_value(_key, value), do: value
+
+  defp default_config("integer"), do: %{"min" => 0, "max" => 1000, "step" => 1, "null_prob" => 0}
+
+  defp default_config("float"),
+    do: %{"min" => 0, "max" => 100, "precision" => 2, "null_prob" => 0}
+
+  defp default_config("string"),
+    do: %{
+      "length" => 10,
+      "charset" => "alphanumeric",
+      "prefix" => "",
+      "suffix" => "",
+      "null_prob" => 0
+    }
+
+  defp default_config("regex"), do: %{"pattern" => ""}
+  defp default_config("enum"), do: %{"values" => []}
+
+  defp default_config("date"),
+    do: %{"from" => "2020-01-01", "to" => "2025-12-31", "timezone" => "UTC"}
+
+  defp default_config("datetime"),
+    do: %{
+      "from" => "2020-01-01T00:00:00",
+      "to" => "2025-12-31T23:59:59",
+      "timezone" => "UTC"
+    }
+
+  defp default_config("price"), do: %{"currency" => ""}
+  defp default_config(_), do: %{}
 end

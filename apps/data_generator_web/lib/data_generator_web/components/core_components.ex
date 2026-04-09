@@ -220,7 +220,7 @@ defmodule DataGeneratorWeb.CoreComponents do
       end)
 
     ~H"""
-    <div class="mb-2">
+    <div phx-feedback-for={@name} class="mb-2">
       <label for={@id} class="flex items-center gap-2 cursor-pointer select-none">
         <input
           type="hidden"
@@ -254,7 +254,7 @@ defmodule DataGeneratorWeb.CoreComponents do
 
   def input(%{type: "select"} = assigns) do
     ~H"""
-    <div class="mb-2">
+    <div phx-feedback-for={@name} class="mb-2">
       <label for={@id} class="block">
         <span :if={@label} class="block text-sm font-medium text-gray-700 mb-1">{@label}</span>
         <select
@@ -284,7 +284,7 @@ defmodule DataGeneratorWeb.CoreComponents do
 
   def input(%{type: "textarea"} = assigns) do
     ~H"""
-    <div class="mb-2">
+    <div phx-feedback-for={@name} class="mb-2">
       <label for={@id} class="block">
         <span :if={@label} class="block text-sm font-medium text-gray-700 mb-1">{@label}</span>
         <textarea
@@ -311,7 +311,7 @@ defmodule DataGeneratorWeb.CoreComponents do
   # All other inputs text, datetime-local, url, password, etc. are handled here...
   def input(assigns) do
     ~H"""
-    <div class="mb-2">
+    <div phx-feedback-for={@name} class="mb-2">
       <label for={@id} class="block">
         <span :if={@label} class="block text-sm font-medium text-gray-700 mb-1">{@label}</span>
         <input
@@ -500,6 +500,259 @@ defmodule DataGeneratorWeb.CoreComponents do
     ~H"""
     <span class={[@name, @class]} />
     """
+  end
+
+  @doc """
+  Renders type-specific configuration inputs for a column.
+  Accepts assigns: :column (map with keys :id, :type_name, :config), :enums (list).
+  This component is used by both the Generate and Templates pages so their
+  configuration UI stays consistent.
+  """
+  attr :column, :map, required: true
+  attr :enums, :list, default: []
+
+  def type_config(assigns) do
+    assigns = assign_new(assigns, :enums, fn -> [] end)
+
+    ~H"""
+    <%= case @column.type_name do %>
+      <% "integer" -> %>
+        <label class="block text-xs font-medium text-gray-700 mb-1">Range</label>
+        <div class="flex items-center gap-2">
+          <form phx-change="update_column_config" phx-value-id={@column.id} phx-value-key="min">
+            <input
+              type="number"
+              name="value"
+              value={@column.config["min"] || 0}
+              class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+              placeholder="Min"
+            />
+          </form>
+          <span class="text-gray-400">-</span>
+          <form phx-change="update_column_config" phx-value-id={@column.id} phx-value-key="max">
+            <input
+              type="number"
+              name="value"
+              value={@column.config["max"] || 1000}
+              class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+              placeholder="Max"
+            />
+          </form>
+        </div>
+      <% "float" -> %>
+        <label class="block text-xs font-medium text-gray-700 mb-1">Range</label>
+        <div class="flex items-center gap-2">
+          <form phx-change="update_column_config" phx-value-id={@column.id} phx-value-key="min">
+            <input
+              type="number"
+              name="value"
+              value={@column.config["min"] || 0}
+              step="any"
+              class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+              placeholder="Min"
+            />
+          </form>
+          <span class="text-gray-400">-</span>
+          <form phx-change="update_column_config" phx-value-id={@column.id} phx-value-key="max">
+            <input
+              type="number"
+              name="value"
+              value={@column.config["max"] || 100}
+              step="any"
+              class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+              placeholder="Max"
+            />
+          </form>
+        </div>
+        <div class="mt-2">
+          <label class="block text-xs font-medium text-gray-700 mb-1">
+            Precision (decimal places)
+          </label>
+          <form phx-change="update_column_config" phx-value-id={@column.id} phx-value-key="precision">
+            <input
+              type="number"
+              name="value"
+              value={@column.config["precision"] || 2}
+              min="0"
+              max="10"
+              class="block w-24 rounded-lg border border-gray-300 px-3 py-2 text-sm"
+              placeholder="2"
+            />
+          </form>
+        </div>
+      <% "price" -> %>
+        <label class="block text-xs font-medium text-gray-700 mb-1">Currency</label>
+        <form phx-change="update_column_config" phx-value-id={@column.id} phx-value-key="currency">
+          <input
+            type="text"
+            name="value"
+            value={@column.config["currency"] || ""}
+            class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+            placeholder="USD, EUR, $, ..."
+          />
+        </form>
+      <% "date" -> %>
+        <label class="block text-xs font-medium text-gray-700 mb-1">Date Range</label>
+        <div class="flex items-center gap-2">
+          <form phx-change="update_column_config" phx-value-id={@column.id} phx-value-key="from">
+            <input
+              type="date"
+              name="value"
+              value={@column.config["from"] || "2020-01-01"}
+              class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+            />
+          </form>
+          <span class="text-gray-400 text-xs">to</span>
+          <form phx-change="update_column_config" phx-value-id={@column.id} phx-value-key="to">
+            <input
+              type="date"
+              name="value"
+              value={@column.config["to"] || "2025-12-31"}
+              class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+            />
+          </form>
+        </div>
+        <div class="mt-2">
+          <label class="block text-xs font-medium text-gray-700 mb-1">Timezone</label>
+          <form phx-change="update_column_config" phx-value-id={@column.id} phx-value-key="timezone">
+            <select
+              name="value"
+              class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+            >
+              <%= for {label, value} <- timezone_options() do %>
+                <option value={value} selected={(@column.config["timezone"] || "UTC") == value}>
+                  {label}
+                </option>
+              <% end %>
+            </select>
+          </form>
+        </div>
+      <% "datetime" -> %>
+        <label class="block text-xs font-medium text-gray-700 mb-1">DateTime Range</label>
+        <div class="flex items-center gap-2">
+          <form phx-change="update_column_config" phx-value-id={@column.id} phx-value-key="from">
+            <input
+              type="datetime-local"
+              name="value"
+              value={@column.config["from"] || "2020-01-01T00:00:00"}
+              class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+            />
+          </form>
+          <span class="text-gray-400 text-xs">to</span>
+          <form phx-change="update_column_config" phx-value-id={@column.id} phx-value-key="to">
+            <input
+              type="datetime-local"
+              name="value"
+              value={@column.config["to"] || "2025-12-31T23:59:59"}
+              class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+            />
+          </form>
+        </div>
+        <div class="mt-2">
+          <label class="block text-xs font-medium text-gray-700 mb-1">Timezone</label>
+          <form phx-change="update_column_config" phx-value-id={@column.id} phx-value-key="timezone">
+            <select
+              name="value"
+              class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+            >
+              <%= for {label, value} <- timezone_options() do %>
+                <option value={value} selected={(@column.config["timezone"] || "UTC") == value}>
+                  {label}
+                </option>
+              <% end %>
+            </select>
+          </form>
+        </div>
+      <% "string" -> %>
+        <label class="block text-xs font-medium text-gray-700 mb-1">Length</label>
+        <form phx-change="update_column_config" phx-value-id={@column.id} phx-value-key="length">
+          <input
+            type="number"
+            name="value"
+            value={@column.config["length"] || 10}
+            min="1"
+            class="block w-28 rounded-lg border border-gray-300 px-3 py-2 text-sm"
+            placeholder="Length"
+          />
+        </form>
+      <% "regex" -> %>
+        <label class="block text-xs font-medium text-gray-700 mb-1">Pattern</label>
+        <form phx-change="update_column_config" phx-value-id={@column.id} phx-value-key="pattern">
+          <input
+            type="text"
+            name="value"
+            value={@column.config["pattern"] || ""}
+            class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono"
+            placeholder="[A-Z]{3}-\\d{4}"
+          />
+        </form>
+      <% "enum" -> %>
+        <%= if @enums != [] do %>
+          <label class="block text-xs font-medium text-gray-700 mb-1">Enum Source</label>
+          <form phx-change="update_column_config" phx-value-id={@column.id} phx-value-key="enum_id">
+            <select
+              name="value"
+              class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+            >
+              <option value="">-- Select enum --</option>
+              <%= for e <- @enums do %>
+                <option
+                  value={e.id}
+                  selected={to_string(e.id) == to_string(@column.config["enum_id"])}
+                >
+                  {e.name}
+                </option>
+              <% end %>
+            </select>
+          </form>
+        <% end %>
+        <div class={[if(@enums != [], do: "mt-2")]}>
+          <label class="block text-xs font-medium text-gray-700 mb-1">Inline Values</label>
+          <form phx-change="update_column_config" phx-value-id={@column.id} phx-value-key="values">
+            <input
+              type="text"
+              name="value"
+              value={@column.config["values"] || ""}
+              class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+              placeholder="inline values, comma-separated (red,green,blue)"
+            />
+          </form>
+        </div>
+      <% _ -> %>
+        <p class="text-xs text-gray-400 py-2">No additional configuration needed.</p>
+    <% end %>
+    """
+  end
+
+  defp timezone_options do
+    [
+      {"UTC", "UTC"},
+      {"-12:00 (Baker Island)", "-12:00"},
+      {"-11:00 (Samoa)", "-11:00"},
+      {"-10:00 (Hawaii)", "-10:00"},
+      {"-09:00 (Alaska)", "-09:00"},
+      {"-08:00 (PST)", "-08:00"},
+      {"-07:00 (MST)", "-07:00"},
+      {"-06:00 (CST)", "-06:00"},
+      {"-05:00 (EST)", "-05:00"},
+      {"-04:00 (AST)", "-04:00"},
+      {"-03:00 (BRT)", "-03:00"},
+      {"-02:00", "-02:00"},
+      {"-01:00 (Azores)", "-01:00"},
+      {"+01:00 (CET)", "+01:00"},
+      {"+02:00 (EET)", "+02:00"},
+      {"+03:00 (MSK)", "+03:00"},
+      {"+04:00 (GST)", "+04:00"},
+      {"+05:00 (PKT)", "+05:00"},
+      {"+05:30 (IST)", "+05:30"},
+      {"+06:00 (BST)", "+06:00"},
+      {"+07:00 (ICT)", "+07:00"},
+      {"+08:00 (CST/HKT)", "+08:00"},
+      {"+09:00 (JST)", "+09:00"},
+      {"+10:00 (AEST)", "+10:00"},
+      {"+11:00 (SBT)", "+11:00"},
+      {"+12:00 (NZST)", "+12:00"}
+    ]
   end
 
   ## JS Commands

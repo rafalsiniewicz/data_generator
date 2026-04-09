@@ -55,7 +55,10 @@ defmodule DataGeneratorWeb.TemplatesLive.Index do
           phx-update="stream"
           class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
         >
-          <div class="hidden only:block col-span-full rounded-xl border border-dashed border-gray-300 bg-gray-50 p-12 text-center">
+          <div
+            id="templates-empty"
+            class="hidden only:block col-span-full rounded-xl border border-dashed border-gray-300 bg-gray-50 p-12 text-center"
+          >
             <.icon name="hero-document-duplicate" class="mx-auto w-12 h-12 text-gray-400" />
             <h3 class="mt-4 text-sm font-semibold text-gray-900">No templates yet</h3>
             <p class="mt-1 text-sm text-gray-500">Get started by creating a new template.</p>

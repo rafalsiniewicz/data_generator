@@ -53,7 +53,10 @@ defmodule DataGeneratorWeb.EnumsLive.Index do
           phx-update="stream"
           class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
         >
-          <div class="hidden only:block col-span-full rounded-xl border border-dashed border-gray-300 bg-gray-50 p-12 text-center">
+          <div
+            id="enums-empty"
+            class="hidden only:block col-span-full rounded-xl border border-dashed border-gray-300 bg-gray-50 p-12 text-center"
+          >
             <.icon name="hero-list-bullet" class="mx-auto w-12 h-12 text-gray-400" />
             <h3 class="mt-4 text-sm font-semibold text-gray-900">No custom enums yet</h3>
             <p class="mt-1 text-sm text-gray-500">
