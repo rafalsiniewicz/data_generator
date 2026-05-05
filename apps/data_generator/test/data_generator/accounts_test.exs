@@ -7,7 +7,7 @@ defmodule DataGenerator.AccountsTest do
   # ── Helpers ───────────────────────────────────────────────────
 
   defp create_user(_context) do
-    user = insert(:user)
+    user = insert(:user) |> confirm_user_email()
     %{user: user}
   end
 

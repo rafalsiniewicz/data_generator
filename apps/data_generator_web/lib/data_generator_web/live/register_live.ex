@@ -3,6 +3,7 @@ defmodule DataGeneratorWeb.RegisterLive do
 
   alias DataGenerator.Accounts
   alias DataGenerator.Accounts.User
+  alias DataGenerator.Accounts.UserNotifier
 
   def mount(_params, _session, socket) do
     changeset = Accounts.change_user_registration(%User{})
@@ -103,8 +104,9 @@ defmodule DataGeneratorWeb.RegisterLive do
   def handle_event("register", %{"user" => user_params}, socket) do
     case Accounts.register_user(user_params) do
       {:ok, user} ->
-        _token = Accounts.generate_email_token(user, "confirm_email")
-        # In production, send the token via email here
+        token = Accounts.generate_email_token(user, "confirm_email")
+        url = url(socket, ~p"/confirm-email/#{token}")
+        UserNotifier.deliver_confirmation_instructions(user, url)
         {:noreply, assign(socket, check_email: true)}
 
       {:error, changeset} ->

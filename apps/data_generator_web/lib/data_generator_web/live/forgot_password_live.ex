@@ -2,6 +2,7 @@ defmodule DataGeneratorWeb.ForgotPasswordLive do
   use DataGeneratorWeb, :live_view
 
   alias DataGenerator.Accounts
+  alias DataGenerator.Accounts.UserNotifier
 
   def mount(_params, _session, socket) do
     form = to_form(%{"email" => ""}, as: :user)
@@ -72,7 +73,16 @@ defmodule DataGeneratorWeb.ForgotPasswordLive do
   end
 
   def handle_event("send_reset", %{"user" => %{"email" => email}}, socket) do
-    Accounts.request_password_reset(email)
+    case Accounts.request_password_reset(email) do
+      {:ok, token} when is_binary(token) ->
+        user = Accounts.get_user_by_email(email)
+        url = url(socket, ~p"/reset-password/#{token}")
+        UserNotifier.deliver_password_reset_instructions(user, url)
+
+      {:ok, nil} ->
+        :ok
+    end
+
     # Always show success message to prevent email enumeration
     {:noreply, assign(socket, email_sent: true)}
   end

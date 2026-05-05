@@ -12,7 +12,6 @@ defmodule DataGenerator.Accounts.User do
     field :password, :string, virtual: true, redact: true
     field :password_hash, :string
 
-    has_many :refresh_tokens, DataGenerator.Accounts.RefreshToken
     has_many :email_verification_tokens, DataGenerator.Accounts.EmailVerificationToken
     has_many :project_members, DataGenerator.Projects.ProjectMember
     has_many :projects, through: [:project_members, :project]

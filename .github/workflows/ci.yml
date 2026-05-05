@@ -69,5 +69,4 @@ jobs:
         env:
           DATABASE_URL: ecto://postgres:postgres@localhost/data_generator_test
           SECRET_KEY_BASE: test-secret-key-base-that-is-at-least-64-bytes-long-for-phoenix-endpoint-config
-          CLOAK_KEY: UE58DIkZ21oP743vIpaDW+WFiO6Ce0UWYfMzZPQze5Y=
         run: mix test

@@ -8,7 +8,15 @@ defmodule DataGenerator.Umbrella.MixProject do
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       aliases: aliases(),
-      listeners: [Phoenix.CodeReloader]
+      listeners: [Phoenix.CodeReloader],
+      releases: [
+        data_generator: [
+          applications: [
+            data_generator: :permanent,
+            data_generator_web: :permanent
+          ]
+        ]
+      ]
     ]
   end
 

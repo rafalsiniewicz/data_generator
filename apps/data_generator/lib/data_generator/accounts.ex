@@ -7,7 +7,6 @@ defmodule DataGenerator.Accounts do
   alias DataGenerator.Repo
   alias DataGenerator.Accounts.User
   alias DataGenerator.Accounts.EmailVerificationToken
-  alias DataGenerator.Accounts.Auth
 
   @doc """
   Registers a new user with the given attributes.
@@ -20,14 +19,19 @@ defmodule DataGenerator.Accounts do
 
   @doc """
   Authenticates a user by email or login and password.
-  Returns `{:ok, user}` on success, `{:error, :invalid_credentials}` on failure.
+  Returns `{:ok, user}` on success, `{:error, :invalid_credentials}` on failure,
+  or `{:error, :email_not_confirmed}` if the user has not confirmed their email.
   """
   def authenticate_user(email_or_login, password) do
     user = get_user_by_email_or_login(email_or_login)
 
     cond do
       user && Bcrypt.verify_pass(password, user.password_hash) ->
-        {:ok, user}
+        if email_confirmed?(user) do
+          {:ok, user}
+        else
+          {:error, :email_not_confirmed}
+        end
 
       user ->
         {:error, :invalid_credentials}
@@ -183,7 +187,6 @@ defmodule DataGenerator.Accounts do
 
   @doc """
   Resets a user's password using a verification token.
-  Revokes all refresh tokens for the user on success.
   """
   def reset_password(raw_token, attrs) do
     import Ecto.Query
@@ -208,24 +211,28 @@ defmodule DataGenerator.Accounts do
 
         case Repo.update(changeset) do
           {:ok, _updated_token} ->
-            result =
-              token.user
-              |> User.password_changeset(attrs)
-              |> Repo.update()
-
-            case result do
-              {:ok, user} ->
-                Auth.revoke_all_user_tokens(user.id)
-                {:ok, user}
-
-              error ->
-                error
-            end
+            token.user
+            |> User.password_changeset(attrs)
+            |> Repo.update()
 
           {:error, changeset} ->
             {:error, changeset}
         end
     end
+  end
+
+  @doc """
+  Checks whether a user has confirmed their email address.
+  """
+  def email_confirmed?(%User{} = user) do
+    import Ecto.Query
+
+    Repo.exists?(
+      from t in EmailVerificationToken,
+        where: t.user_id == ^user.id,
+        where: t.context == "confirm_email",
+        where: not is_nil(t.confirmed_at)
+    )
   end
 
   defp hash_token(raw_token) do

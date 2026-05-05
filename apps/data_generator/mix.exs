@@ -47,11 +47,6 @@ defmodule DataGenerator.MixProject do
 
       # Auth
       {:bcrypt_elixir, "~> 3.1"},
-      {:joken, "~> 2.6"},
-
-      # Encryption
-      {:cloak, "~> 1.1"},
-      {:cloak_ecto, "~> 1.3"},
 
       # Data generation
       {:faker, "~> 0.18"},

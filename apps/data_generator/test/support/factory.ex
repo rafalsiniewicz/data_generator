@@ -129,4 +129,27 @@ defmodule DataGenerator.Factory do
       user: build(:user)
     }
   end
+
+  # ── Helpers ──────────────────────────────────────────────────
+
+  @doc """
+  Marks a user's email as confirmed by inserting a confirmed verification token.
+  """
+  def confirm_user_email(%User{} = user) do
+    alias DataGenerator.Accounts.EmailVerificationToken
+
+    now = DateTime.utc_now() |> DateTime.truncate(:second)
+
+    %EmailVerificationToken{}
+    |> EmailVerificationToken.changeset(%{
+      user_id: user.id,
+      token_hash: :crypto.strong_rand_bytes(32) |> Base.encode16(case: :lower),
+      context: "confirm_email",
+      expires_at: DateTime.add(now, 24 * 3600, :second),
+      confirmed_at: now
+    })
+    |> DataGenerator.Repo.insert!()
+
+    user
+  end
 end

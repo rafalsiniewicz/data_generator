@@ -22,10 +22,11 @@ services:
     ports:
       - "4000:4000"
     environment:
-      DATABASE_URL: ecto://postgres:postgres@db/data_generator_prod
-      SECRET_KEY_BASE: ${SECRET_KEY_BASE:-please-generate-a-secret-with-mix-phx-gen-secret}
-      CLOAK_KEY: ${CLOAK_KEY:-UE58DIkZ21oP743vIpaDW+WFiO6Ce0UWYfMzZPQze5Y=}
+      DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL in .env}
+      SECRET_KEY_BASE: ${SECRET_KEY_BASE:?Set SECRET_KEY_BASE in .env}
       PHX_HOST: ${PHX_HOST:-localhost}
+      SMTP_HOST: ${SMTP_HOST:-mailhog}
+      SMTP_PORT: ${SMTP_PORT:-1025}
       PORT: "4000"
     depends_on:
       db:

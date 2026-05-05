@@ -17,6 +17,11 @@ defmodule DataGeneratorWeb.UserSessionController do
       {:ok, user} ->
         Auth.log_in_user(conn, user)
 
+      {:error, :email_not_confirmed} ->
+        conn
+        |> put_flash(:error, "Please confirm your email address before logging in")
+        |> redirect(to: ~p"/login")
+
       {:error, _reason} ->
         conn
         |> put_flash(:error, "Invalid email/username or password")

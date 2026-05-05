@@ -218,25 +218,6 @@ defmodule DataGeneratorWeb.TemplatesLive.New do
     {:noreply, assign(socket, columns: columns)}
   end
 
-  # def handle_event("update_column_type", %{"id" => id_str} = params, socket) do
-  #   IO.inspect(params, label: "params")
-  #   id = String.to_integer(id_str)
-  #   type_id_str = params["template"]["columns"]["#{id}"]["type_id"] || ""
-
-  #   type_id =
-  #     case Integer.parse(type_id_str) do
-  #       {n, _} -> n
-  #       :error -> nil
-  #     end
-
-  #   columns =
-  #     Elixir.Enum.map(socket.assigns.columns, fn col ->
-  #       if col.id == id, do: %{col | type_id: type_id}, else: col
-  #     end)
-
-  #   {:noreply, assign(socket, columns: columns)}
-  # end
-
   def handle_event("update_column_type", %{"id" => id_str, "value" => type_name}, socket) do
     id = String.to_integer(id_str)
 

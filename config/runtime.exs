@@ -40,23 +40,24 @@ if config_env() == :prod do
       You can generate one by calling: mix phx.gen.secret
       """
 
+  host = System.get_env("PHX_HOST") || "example.com"
+  port = String.to_integer(System.get_env("PORT") || "4000")
+  scheme = System.get_env("PHX_SCHEME") || "http"
+  url_port = String.to_integer(System.get_env("PHX_URL_PORT") || to_string(port))
+
   config :data_generator_web, DataGeneratorWeb.Endpoint,
+    url: [host: host, port: url_port, scheme: scheme],
     http: [
       # Enable IPv6 and bind on all interfaces.
       # Set it to  {0, 0, 0, 0, 0, 0, 0, 1} for local network only access.
-      ip: {0, 0, 0, 0, 0, 0, 0, 0}
+      ip: {0, 0, 0, 0, 0, 0, 0, 0},
+      port: port
     ],
     secret_key_base: secret_key_base
 
-  # ## Using releases
-  #
-  # If you are doing OTP releases, you need to instruct Phoenix
-  # to start each relevant endpoint:
-  #
-  #     config :data_generator_web, DataGeneratorWeb.Endpoint, server: true
-  #
-  # Then you can assemble a release by calling `mix release`.
-  # See `mix help release` for more information.
+  if System.get_env("PHX_SERVER") do
+    config :data_generator_web, DataGeneratorWeb.Endpoint, server: true
+  end
 
   # ## SSL Support
   #
@@ -92,33 +93,33 @@ if config_env() == :prod do
 
   # ## Configuring the mailer
   #
-  # In production you need to configure the mailer to use a different adapter.
-  # Here is an example configuration for Mailgun:
-  #
-  #     config :data_generator, DataGenerator.Mailer,
-  #       adapter: Swoosh.Adapters.Mailgun,
-  #       api_key: System.get_env("MAILGUN_API_KEY"),
-  #       domain: System.get_env("MAILGUN_DOMAIN")
-  #
-  # Most non-SMTP adapters require an API client. Swoosh supports Req, Hackney,
-  # and Finch out-of-the-box. This configuration is typically done at
-  # compile-time in your config/prod.exs:
-  #
-  #     config :swoosh, :api_client, Swoosh.ApiClient.Req
-  #
-  # See https://hexdocs.pm/swoosh/Swoosh.html#module-installation for details.
+  # Configure SMTP relay via environment variables.
+  # For local Docker development, point to the mailhog service.
+  # For production, set SMTP_HOST, SMTP_PORT, SMTP_USERNAME, SMTP_PASSWORD.
+  smtp_host = System.get_env("SMTP_HOST")
 
-  cloak_key =
-    System.get_env("CLOAK_KEY") ||
-      raise """
-      environment variable CLOAK_KEY is missing.
-      Generate one with: :crypto.strong_rand_bytes(32) |> Base.encode64()
-      """
+  if smtp_host do
+    smtp_port = String.to_integer(System.get_env("SMTP_PORT") || "587")
+    smtp_username = System.get_env("SMTP_USERNAME")
+    smtp_password = System.get_env("SMTP_PASSWORD")
 
-  config :data_generator, DataGenerator.Vault,
-    ciphers: [
-      default: {Cloak.Ciphers.AES.GCM, tag: "AES.GCM.V1", key: Base.decode64!(cloak_key)}
+    smtp_config = [
+      adapter: Swoosh.Adapters.SMTP,
+      relay: smtp_host,
+      port: smtp_port,
+      no_mx_lookups: true
     ]
+
+    smtp_config =
+      if smtp_username do
+        smtp_config ++
+          [username: smtp_username, password: smtp_password, auth: :always, ssl: true]
+      else
+        smtp_config ++ [auth: :never, tls: :never]
+      end
+
+    config :data_generator, DataGenerator.Mailer, smtp_config
+  end
 
   config :data_generator, :dns_cluster_query, System.get_env("DNS_CLUSTER_QUERY")
 end

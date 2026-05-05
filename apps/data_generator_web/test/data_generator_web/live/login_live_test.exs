@@ -15,6 +15,8 @@ defmodule DataGeneratorWeb.LoginLiveTest do
         "password" => password
       })
 
+    confirm_user_email(user)
+
     %{user: user, password: password}
   end
 

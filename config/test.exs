@@ -41,11 +41,3 @@ config :phoenix,
   sort_verified_routes_query_params: true
 
 config :bcrypt_elixir, :log_rounds, 1
-
-# Cloak vault key for test
-config :data_generator, DataGenerator.Vault,
-  ciphers: [
-    default:
-      {Cloak.Ciphers.AES.GCM,
-       tag: "AES.GCM.V1", key: Base.decode64!("UE58DIkZ21oP743vIpaDW+WFiO6Ce0UWYfMzZPQze5Y=")}
-  ]

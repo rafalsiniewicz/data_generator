@@ -1,7 +1,7 @@
 # Find eligible files for COPY
 ARG ELIXIR_VERSION=1.19.5
-ARG OTP_VERSION=28
-ARG DEBIAN_VERSION=bookworm-20240904-slim
+ARG OTP_VERSION=27.3.1
+ARG DEBIAN_VERSION=bookworm-20260406-slim
 ARG BUILDER_IMAGE="hexpm/elixir:${ELIXIR_VERSION}-erlang-${OTP_VERSION}-debian-${DEBIAN_VERSION}"
 ARG RUNNER_IMAGE="debian:${DEBIAN_VERSION}"
 
@@ -38,7 +38,7 @@ ENV MIX_ENV="prod"
 # Copy dependency config
 RUN mkdir config
 COPY config/config.exs config/
-COPY config/prod.exs config/ 2>/dev/null || true
+COPY config/prod.exs config/
 COPY config/runtime.exs config/
 
 # Compile dependencies
@@ -79,9 +79,9 @@ RUN apt-get update -y && \
 # Set the locale
 RUN sed -i '/en_US.UTF-8/s/^# //g' /etc/locale.gen && locale-gen
 
-ENV LANG en_US.UTF-8
-ENV LANGUAGE en_US:en
-ENV LC_ALL en_US.UTF-8
+ENV LANG=en_US.UTF-8
+ENV LANGUAGE=en_US:en
+ENV LC_ALL=en_US.UTF-8
 
 WORKDIR /app
 
@@ -103,4 +103,4 @@ EXPOSE 4000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
   CMD curl -f http://localhost:4000/ || exit 1
 
-CMD ["bin/data_generator", "start"]
+CMD bin/data_generator eval "DataGenerator.Release.seed()" && bin/data_generator start

@@ -90,11 +90,3 @@ config :swoosh, :api_client, false
 # Set a higher stacktrace during development. Avoid configuring such
 # in production as building large stacktraces may be expensive.
 config :phoenix, :stacktrace_depth, 20
-
-# Cloak vault key for development (32 bytes, base64 encoded)
-config :data_generator, DataGenerator.Vault,
-  ciphers: [
-    default:
-      {Cloak.Ciphers.AES.GCM,
-       tag: "AES.GCM.V1", key: Base.decode64!("UE58DIkZ21oP743vIpaDW+WFiO6Ce0UWYfMzZPQze5Y=")}
-  ]

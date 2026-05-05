@@ -37,3 +37,6 @@ Thumbs.db
 # AI/docs
 .ai
 AGENTS.md
+
+# Secrets
+.env*
