@@ -1,0 +1,88 @@
+/* See the Tailwind configuration guide for advanced usage
+   https://tailwindcss.com/docs/configuration */
+
+@import "tailwindcss" source(none);
+@source "../css";
+@source "../js";
+@source "../../lib/data_generator_web";
+
+/* A Tailwind plugin that makes "hero-#{ICON}" classes available.
+   The heroicons installation itself is managed by your mix.exs */
+@plugin "../vendor/heroicons";
+
+/* Add variants based on LiveView classes */
+@custom-variant phx-click-loading (.phx-click-loading&, .phx-click-loading &);
+@custom-variant phx-submit-loading (.phx-submit-loading&, .phx-submit-loading &);
+@custom-variant phx-change-loading (.phx-change-loading&, .phx-change-loading &);
+
+/* Make LiveView wrapper divs transparent for layout */
+[data-phx-session], [data-phx-teleported-src] { display: contents }
+
+/* ============================================================
+   Data Generator — Custom Theme
+   ============================================================ */
+
+/* Custom theme tokens (CSS custom properties) */
+@theme {
+  --color-primary-50: oklch(0.97 0.01 250);
+  --color-primary-100: oklch(0.93 0.03 250);
+  --color-primary-200: oklch(0.87 0.06 250);
+  --color-primary-300: oklch(0.78 0.10 250);
+  --color-primary-400: oklch(0.68 0.15 250);
+  --color-primary-500: oklch(0.59 0.18 250);
+  --color-primary-600: oklch(0.52 0.17 250);
+  --color-primary-700: oklch(0.45 0.15 250);
+  --color-primary-800: oklch(0.38 0.12 250);
+  --color-primary-900: oklch(0.33 0.09 250);
+  --color-primary-950: oklch(0.24 0.07 250);
+}
+
+/* Smooth page transitions for LiveView navigation */
+.phx-connected .phx-no-feedback.phx-no-feedback {
+  opacity: 1;
+}
+
+/* Loading bar at the top during LiveView navigations */
+.phx-loading {
+  cursor: wait;
+}
+
+/* Topbar progress indicator styling */
+#nprogress {
+  pointer-events: none;
+}
+
+#nprogress .bar {
+  background: var(--color-primary-500);
+  position: fixed;
+  z-index: 1031;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 3px;
+}
+
+/* Focus ring utility for custom focus styles */
+*:focus-visible {
+  outline: 2px solid var(--color-primary-500);
+  outline-offset: 2px;
+}
+
+/* Subtle scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: oklch(0.7 0 0 / 0.3);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: oklch(0.5 0 0 / 0.4);
+}
