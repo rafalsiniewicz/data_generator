@@ -2,7 +2,7 @@
   <img src="apps/data_generator_web/priv/static/images/logo.svg" alt="Data Generator Logo" width="100" height="auto">
   <h1 align="center">Data Generator</h1>
   <p align="center">
-    A powerful web-based mock data generation tool built with Elixir &amp; Phoenix LiveView
+    A web-based mock data generation tool built with Elixir &amp; Phoenix LiveView
   </p>
   <p align="center">
     Generate realistic test data — CSV, JSON, or SQL — with a rich set of data types,
