@@ -15,7 +15,7 @@ defmodule DataGeneratorWeb.HomeLive do
       <div class="text-center py-20">
         <h1 class="text-5xl font-bold tracking-tight text-gray-900">Data Generator</h1>
         <p class="mt-6 text-lg leading-8 text-gray-600 max-w-2xl mx-auto">
-          Generate millions of realistic mock data rows instantly.
+          Generate mock data rows.
           Export to CSV, JSON, or SQL — no sign-up required.
         </p>
         <div class="mt-10 flex items-center justify-center gap-x-6">
@@ -43,7 +43,7 @@ defmodule DataGeneratorWeb.HomeLive do
             </div>
             <h3 class="mt-4 text-lg font-semibold text-gray-900">Blazing Fast</h3>
             <p class="mt-2 text-sm text-gray-600">
-              Parallel generation engine handles millions of rows with ease.
+              Parallel generation engine handles faster data generation.
             </p>
           </div>
           <div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm hover:shadow-md transition">
@@ -52,7 +52,7 @@ defmodule DataGeneratorWeb.HomeLive do
             </div>
             <h3 class="mt-4 text-lg font-semibold text-gray-900">Multiple Formats</h3>
             <p class="mt-2 text-sm text-gray-600">
-              Export your generated data as CSV, JSON, or SQL INSERT statements.
+              Export your generated data as CSV, JSON or SQL INSERT statements.
             </p>
           </div>
         </div>
