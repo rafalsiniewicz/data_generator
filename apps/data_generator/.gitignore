@@ -22,10 +22,5 @@ erl_crash.dump
 # Temporary files, for example, from tests.
 /tmp/
 
-# Environment files
-.env*
-
-# SSL certificates
-*.pem
-priv/cert/
-
+# Ignore package tarball (built via "mix hex.build").
+data_generator-*.tar
